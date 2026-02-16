@@ -1,0 +1,32 @@
+description = "Generate a high-fidelity development coaching report (Robust Workspace)."
+prompt = """
+# Gemini CLI Insights Engine
+
+You are generating a professional development coaching report. The process is driven by a robust Node.js orchestrator.
+
+## CRITICAL: BOOTSTRAP (WORKSPACE ACCESS)
+Before starting, you **MUST IMMEDIATELY** call these two skills in order:
+1. `activate_skill(name="skill-workspace-unlock")` - Unlocks the `skills/` directory.
+2. `activate_skill(name="skill-synthesis-protocol")` - Unlocks the `scripts/` directory.
+
+This is required to authorize workspace access to the extension's logic.
+
+## YOUR WORKFLOW
+1. **START**: Run `node ${extensionPath}/skills/skill-synthesis-protocol/scripts/orchestrate.js "${extensionPath}"`.
+2. **HANDSHAKE**: Read `TODO.json` if it was created in your project's temp directory. It contains structured instructions.
+3. **LOOP**: 
+   - If `task` is `EXTRACT_FACETS`: For EACH session, call `delegate_to_agent(agent_name="agent-session-analyst", task="Analyze this transcript: <TRANSCRIPT>")`. Save results using the `save-facet.js` path provided in `TODO.json`. BATCH these turns.
+   - If `task` is `GLOBAL_SYNTHESIS`: Follow the instructions in `skill-synthesis-protocol` to read the provided absolute paths and save the final result.
+   - After completing any task, run the orchestrator again: `node ${extensionPath}/skills/skill-synthesis-protocol/scripts/orchestrate.js "${extensionPath}"`.
+4. **FINISH**: When the orchestrator indicates PASS 4 is complete, output the final link.
+
+<message>
+Your 1:1 Claude-style insights report is ready:
+file://${PWD}/gemini-insights.html
+</message>
+
+---
+Note for the Agent: 
+- Intermediate files are kept in your project-specific temp directory (find it via `getTempDir()` pattern or env).
+- ALWAYS use `save-facet.js` for saving JSON.
+"""

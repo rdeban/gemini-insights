@@ -1,0 +1,5 @@
+{
+  "name": "insights-extension",
+  "version": "0.0.1",
+  "description": "Analyzes Gemini CLI usage patterns and provides architectural insights."
+}
