@@ -28,6 +28,13 @@ Simply type the following command in any Gemini CLI session:
 
 ## How it Works
 
-The extension uses a script (`scripts/aggregate-stats.js`) to scan your local session logs in `~/.gemini/tmp/`. It extracts metadata about your interactions, which is then formatted and passed back to Gemini. The model analyzes this data to provide a detailed report tailored to your recent activity.
+The extension uses a script (`scripts/aggregate-stats.js`) to scan your local session logs in `~/.gemini/tmp/` (or `GEMINI_CLI_HOME/tmp/` if set). It extracts metadata about your interactions, which is then formatted and passed back to Gemini. The model analyzes this data to provide a detailed report tailored to your recent activity.
+
+### Environment Variables
+
+- `GEMINI_CLI_HOME`: Root directory for Gemini CLI configuration. The CLI creates a `.gemini` folder inside this directory (defaults to `~` so the folder is `~/.gemini`).
+- `INSIGHTS_CACHE_DIR`: Override the location of the qualitative facets cache (defaults to `GEMINI_CLI_HOME/.gemini/cache/insights-extension`).
+- `INSIGHTS_TEMP_DIR`: Override the location of the temporary processing directory (defaults to `GEMINI_CLI_HOME/.gemini/tmp/insights-extension/<project-hash>`).
+- `GEMINI_SESSION_DIR`: Override the location of the Gemini CLI session logs (defaults to `GEMINI_CLI_HOME/.gemini/tmp`).
 
 **Note**: This extension only processes metadata (counts and file types) and does not send the full content of your messages to ensure privacy and efficiency.

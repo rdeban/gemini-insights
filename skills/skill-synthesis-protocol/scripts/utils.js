@@ -31,9 +31,31 @@ function extractJson(str) {
 function resolveSessionDir() {
   const envPath = process.env.GEMINI_SESSION_DIR;
   if (envPath && fs.existsSync(envPath)) return envPath;
-  const homeGemini = path.join(os.homedir(), '.gemini', 'tmp');
+
+  const geminiHome = process.env.GEMINI_CLI_HOME
+    ? path.join(process.env.GEMINI_CLI_HOME, '.gemini')
+    : path.join(os.homedir(), '.gemini');
+  const homeGemini = path.join(geminiHome, 'tmp');
   if (fs.existsSync(homeGemini)) return homeGemini;
   return null;
+}
+
+/**
+ * Resolves the insights cache directory.
+ */
+function resolveCacheDir() {
+  const envCache = process.env.INSIGHTS_CACHE_DIR;
+  if (envCache) {
+    if (!fs.existsSync(envCache)) fs.mkdirSync(envCache, { recursive: true });
+    return envCache;
+  }
+
+  const geminiHome = process.env.GEMINI_CLI_HOME
+    ? path.join(process.env.GEMINI_CLI_HOME, '.gemini')
+    : path.join(os.homedir(), '.gemini');
+  const cachePath = path.join(geminiHome, 'cache', 'insights-extension');
+  if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
+  return cachePath;
 }
 
 /**
@@ -52,10 +74,13 @@ function getTempDir() {
     return envTemp;
   }
 
-  // 3. Fallback to standard CLI pattern: ~/.gemini/tmp/<project-hash>
+  // 3. Fallback to standard CLI pattern: ~/.gemini/tmp/insights-extension/<project-hash>
   const projectRoot = process.cwd();
   const hash = crypto.createHash('sha256').update(projectRoot).digest('hex');
-  const projectTempDir = path.join(os.homedir(), '.gemini', 'tmp', hash);
+  const geminiHome = process.env.GEMINI_CLI_HOME
+    ? path.join(process.env.GEMINI_CLI_HOME, '.gemini')
+    : path.join(os.homedir(), '.gemini');
+  const projectTempDir = path.join(geminiHome, 'tmp', 'insights-extension', hash);
 
   if (!fs.existsSync(projectTempDir)) {
     fs.mkdirSync(projectTempDir, { recursive: true });
@@ -82,4 +107,4 @@ const logger = {
   info: (msg) => console.warn(`[INFO] ${msg}`)
 };
 
-module.exports = { extractJson, resolveSessionDir, getTempDir, escapeHtml, logger };
+module.exports = { extractJson, resolveSessionDir, resolveCacheDir, getTempDir, escapeHtml, logger };

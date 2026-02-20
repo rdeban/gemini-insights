@@ -1,4 +1,4 @@
-const { extractJson, escapeHtml, getTempDir } = require('./utils');
+const { extractJson, escapeHtml, getTempDir, resolveSessionDir, resolveCacheDir } = require('./utils');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -51,6 +51,74 @@ test('getTempDir - environment variable', () => {
   } finally {
     process.env.GEMINI_TEMP_DIR = original;
     fs.rmSync(mockDir, { recursive: true, force: true });
+  }
+});
+
+test('getTempDir - respects GEMINI_CLI_HOME', () => {
+  const originalHome = process.env.GEMINI_CLI_HOME;
+  const originalTemp = process.env.GEMINI_TEMP_DIR;
+  const originalInsights = process.env.INSIGHTS_TEMP_DIR;
+  
+  // Ensure other variables are unset to hit the GEMINI_CLI_HOME logic
+  delete process.env.GEMINI_TEMP_DIR;
+  delete process.env.INSIGHTS_TEMP_DIR;
+
+  const mockHome = path.join(os.tmpdir(), 'gemini-home-test-' + Date.now());
+  fs.mkdirSync(mockHome, { recursive: true });
+  process.env.GEMINI_CLI_HOME = mockHome;
+  
+  try {
+    const result = getTempDir();
+    // It should be in <mockHome>/.gemini/tmp/insights-extension/<hash>
+    return result.includes(path.join(mockHome, '.gemini', 'tmp', 'insights-extension'));
+  } finally {
+    process.env.GEMINI_CLI_HOME = originalHome;
+    process.env.GEMINI_TEMP_DIR = originalTemp;
+    process.env.INSIGHTS_TEMP_DIR = originalInsights;
+    fs.rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
+test('resolveCacheDir - respects GEMINI_CLI_HOME', () => {
+  const originalHome = process.env.GEMINI_CLI_HOME;
+  const originalCache = process.env.INSIGHTS_CACHE_DIR;
+  
+  delete process.env.INSIGHTS_CACHE_DIR;
+  
+  const mockHome = path.join(os.tmpdir(), 'gemini-cache-test-' + Date.now());
+  fs.mkdirSync(mockHome, { recursive: true });
+  process.env.GEMINI_CLI_HOME = mockHome;
+  
+  try {
+    const result = resolveCacheDir();
+    const expected = path.join(mockHome, '.gemini', 'cache', 'insights-extension');
+    return result === expected && fs.existsSync(result);
+  } finally {
+    process.env.GEMINI_CLI_HOME = originalHome;
+    process.env.INSIGHTS_CACHE_DIR = originalCache;
+    fs.rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
+test('resolveSessionDir - respects GEMINI_CLI_HOME', () => {
+  const { resolveSessionDir } = require('./utils');
+  const originalHome = process.env.GEMINI_CLI_HOME;
+  const originalSessionDir = process.env.GEMINI_SESSION_DIR;
+  
+  delete process.env.GEMINI_SESSION_DIR;
+  
+  const mockHome = path.join(os.tmpdir(), 'gemini-home-session-test-' + Date.now());
+  const mockTmp = path.join(mockHome, '.gemini', 'tmp');
+  fs.mkdirSync(mockTmp, { recursive: true });
+  process.env.GEMINI_CLI_HOME = mockHome;
+  
+  try {
+    const result = resolveSessionDir();
+    return result === mockTmp;
+  } finally {
+    process.env.GEMINI_CLI_HOME = originalHome;
+    process.env.GEMINI_SESSION_DIR = originalSessionDir;
+    fs.rmSync(mockHome, { recursive: true, force: true });
   }
 });
 

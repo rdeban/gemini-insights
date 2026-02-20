@@ -1,12 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { logger, getTempDir } = require('./utils');
+const { logger, getTempDir, resolveCacheDir } = require('./utils');
 
 const EXT_PATH = process.argv[2] || process.cwd();
 const SCRIPTS_DIR = path.join(EXT_PATH, 'skills', 'skill-synthesis-protocol', 'scripts');
 const TEMP_DIR = getTempDir();
-const CACHE_BASE = path.join(EXT_PATH, '.insights-cache');
+const CACHE_BASE = resolveCacheDir();
 const FACETS_DIR = path.join(CACHE_BASE, 'facets');
 const STATE_FILE = path.join(CACHE_BASE, 'state.json');
 
