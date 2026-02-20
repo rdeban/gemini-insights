@@ -4,14 +4,60 @@ const zlib = require('zlib');
 const { escapeHtml } = require('./utils');
 
 function generate(stats, synthesis, outputPath) {
-  // Clean heavy stats not needed for the report
-  const cleanStats = { ...stats };
-  delete cleanStats.sessionList;
-  delete cleanStats.userMessageTimestamps;
-  // We keep userResponseTimes for the histogram, but if it's too large it might be problematic.
-  // Let's assume it's manageable for now as it's just numbers.
+  // 1. Pre-calculate userResponseTimes histogram in the generator
+  const bins = { "2-10s": 0, "10-30s": 0, "30s-1m": 0, "1-2m": 0, "2-5m": 0, "5-15m": 0, ">15m": 0 };
+  if (stats.userResponseTimes) {
+    for (const t of stats.userResponseTimes) {
+      if (t < 10) bins["2-10s"]++;
+      else if (t < 30) bins["10-30s"]++;
+      else if (t < 60) bins["30s-1m"]++;
+      else if (t < 120) bins["1-2m"]++;
+      else if (t < 300) bins["2-5m"]++;
+      else if (t < 900) bins["5-15m"]++;
+      else bins[">15m"]++;
+    }
+  }
 
-  const embeddedData = { stats: cleanStats, synthesis };
+  // 2. Data Capping & Cleaning
+  const cleanStats = {
+    tm: stats.totalMessages || 0,
+    sa: stats.sessionsAnalyzed || 0,
+    la: stats.linesAdded || 0,
+    lr: stats.linesRemoved || 0,
+    ft: stats.filesTouchedCount || 0,
+    ad: stats.activeDays || 0,
+    to: Object.fromEntries(Object.entries(stats.tools || {}).sort((a,b) => b[1]-a[1]).slice(0, 8)),
+    lg: Object.fromEntries(Object.entries(stats.languages || {}).sort((a,b) => b[1]-a[1]).slice(0, 8)),
+    er: Object.fromEntries(Object.entries(stats.toolErrors || {}).sort((a,b) => b[1]-a[1]).slice(0, 6)),
+    ha: stats.hourlyActivity || [],
+    rt: bins,
+    mrt: stats.median_response_time || 0,
+    art: stats.avg_response_time || 0,
+    mc: stats.multi_clauding || {},
+    dr: stats.dateRange || {},
+    ql: stats.qualitative || {}
+  };
+
+  if (stats.meta) {
+    cleanStats.me = {
+      qs: stats.meta.qualitativeSessionsAnalyzed,
+      gt: stats.meta.generationTimeMs
+    };
+  }
+
+  // 3. Synthesis Minification
+  const minSy = {
+    ag: synthesis.at_a_glance || {},
+    pa: (synthesis.project_areas || []).slice(0, 5),
+    is: synthesis.interaction_style || {},
+    ww: synthesis.what_works || {},
+    fa: synthesis.friction_analysis || {},
+    su: synthesis.suggestions || {},
+    oh: synthesis.on_the_horizon || {},
+    fm: synthesis.fun_moment
+  };
+
+  const embeddedData = { s: cleanStats, y: minSy };
   const jsonData = JSON.stringify(embeddedData);
   const compressed = zlib.gzipSync(jsonData);
   const base64Data = compressed.toString('base64');
@@ -129,14 +175,11 @@ function generate(stats, synthesis, outputPath) {
     '  <script>',
     '    const EMBEDDED_DATA = "' + base64Data + '";',
     '    const DESCRIPTIONS = {',
-    '      // Outcomes',
     '      "fully_achieved": "The user\'s goal was completely met.",',
     '      "mostly_achieved": "The user\'s main goal was met, with minor items left or small issues.",',
     '      "partially_achieved": "Some progress was made, but the main goal wasn\'t fully reached.",',
     '      "not_achieved": "No significant progress toward the user\'s goal.",',
     '      "unclear_from_transcript": "The transcript ended before the outcome was certain.",',
-    '      ',
-    '      // Success Drivers',
     '      "none": "No specific success factor stood out.",',
     '      "fast_accurate_search": "Finding the right files or information quickly.",',
     '      "correct_code_edits": "Writing code that worked as expected on the first or second try.",',
@@ -144,15 +187,6 @@ function generate(stats, synthesis, outputPath) {
     '      "proactive_help": "Suggesting better ways or identifying issues before they occurred.",',
     '      "multi_file_changes": "Orchestrating complex changes across several files reliably.",',
     '      "good_debugging": "Identifying and fixing bugs efficiently.",',
-    '      ',
-    '      // Friction Types',
-    '      "misunderstood_request": "Gemini interpreted the user\'s intent incorrectly.",',
-    '      "wrong_approach": "The goal was clear, but the proposed solution was flawed.",',
-    '      "buggy_code": "The generated code contained errors or didn\'t work.",',
-    '      "user_rejected_action": "The user stopped or corrected a tool call.",',
-    '      "excessive_changes": "Changed too many things or over-engineered the solution.",',
-    '      ',
-    '      // Inferred Satisfaction / Helpfulness',
     '      "unhelpful": "Did not contribute to the goal or made things harder.",',
     '      "slightly_helpful": "Minimal contribution, perhaps just minor tasks.",',
     '      "moderately_helpful": "Provided solid assistance but required significant guidance.",',
@@ -169,7 +203,41 @@ function generate(stats, synthesis, outputPath) {
     '        }).pipeThrough(ds);',
     '        const response = new Response(stream);',
     '        const text = await response.text();',
-    '        return JSON.parse(text);',
+    '        const data = JSON.parse(text);',
+    '        if (data.s && data.y) {',
+    '          return {',
+    '            stats: {',
+    '              totalMessages: data.s.tm,',
+    '              sessionsAnalyzed: data.s.sa,',
+    '              linesAdded: data.s.la,',
+    '              linesRemoved: data.s.lr,',
+    '              filesTouchedCount: data.s.ft,',
+    '              activeDays: data.s.ad,',
+    '              tools: data.s.to,',
+    '              languages: data.s.lg,',
+    '              toolErrors: data.s.er,',
+    '              hourlyActivity: data.s.ha,',
+    '              userResponseTimesBins: data.s.rt,',
+    '              median_response_time: data.s.mrt,',
+    '              avg_response_time: data.s.art,',
+    '              multi_clauding: data.s.mc,',
+    '              dateRange: data.s.dr,',
+    '              qualitative: data.s.ql,',
+    '              meta: data.s.me ? { qualitativeSessionsAnalyzed: data.s.me.qs, generationTimeMs: data.s.me.gt } : null',
+    '            },',
+    '            synthesis: {',
+    '              at_a_glance: data.y.ag,',
+    '              project_areas: data.y.pa,',
+    '              interaction_style: data.y.is,',
+    '              what_works: data.y.ww,',
+    '              friction_analysis: data.y.fa,',
+    '              suggestions: data.y.su,',
+    '              on_the_horizon: data.y.oh,',
+    '              fun_moment: data.y.fm',
+    '            }',
+    '          };',
+    '        }',
+    '        return data;',
     '      } catch (e) {',
     '        console.error("Decompression failed", e);',
     '        return null;',
@@ -195,7 +263,8 @@ function generate(stats, synthesis, outputPath) {
     '      const dataString = urlParams.get("data") || hashData || EMBEDDED_DATA;',
     '      ',
     '      const url = new URL(window.location.href);',
-    '      url.searchParams.set("data", dataString);',
+    '      url.search = "";',
+    '      url.hash = "data=" + dataString;',
     '      navigator.clipboard.writeText(url.toString()).then(() => {',
     '        const oldText = btn.innerHTML;',
     '        btn.innerHTML = "Link Copied!";',
@@ -209,7 +278,7 @@ function generate(stats, synthesis, outputPath) {
     '      if (entries.length === 0) return "<p class=\'empty\'>No data</p>";',
     '      const max = Math.max(...entries.map(e => e[1]));',
     '      return entries.map(([label, val]) => {',
-    '        const width = (val / max) * 100;',
+    '        const width = max > 0 ? (val / max) * 100 : 0;',
     '        const desc = DESCRIPTIONS[label];',
     '        const labelHtml = desc ? `<span class="tooltip" data-tip="${escapeHtml(desc)}">${escapeHtml(label)}</span>` : escapeHtml(label);',
     '        return `<div class="bar-row">',
@@ -220,18 +289,8 @@ function generate(stats, synthesis, outputPath) {
     '      }).join("");',
     '    }',
     '',
-    '    function renderResponseTimes(times) {',
-    '      if (!times || times.length === 0) return "<p class=\'empty\'>No response time data</p>";',
-    '      const bins = { "2-10s": 0, "10-30s": 0, "30s-1m": 0, "1-2m": 0, "2-5m": 0, "5-15m": 0, ">15m": 0 };',
-    '      for (const t of times) {',
-    '        if (t < 10) bins["2-10s"]++;',
-    '        else if (t < 30) bins["10-30s"]++;',
-    '        else if (t < 60) bins["30s-1m"]++;',
-    '        else if (t < 120) bins["1-2m"]++;',
-    '        else if (t < 300) bins["2-5m"]++;',
-    '        else if (t < 900) bins["5-15m"]++;',
-    '        else bins[">15m"]++;',
-    '      }',
+    '    function renderResponseTimes(bins) {',
+    '      if (!bins) return "<p class=\'empty\'>No data</p>";',
     '      const max = Math.max(...Object.values(bins));',
     '      return Object.entries(bins).map(([label, val]) => {',
     '        const width = max > 0 ? (val / max) * 100 : 0;',
@@ -333,7 +392,7 @@ function generate(stats, synthesis, outputPath) {
     '',
     '        <div class="chart-card" style="margin: 24px 0;">',
     '          <div class="chart-title">User Response Time Distribution</div>',
-    '          ${renderResponseTimes(stats.userResponseTimes || [])}',
+    '          ${renderResponseTimes(stats.userResponseTimesBins)}',
     '          <div style="font-size: 12px; color: #64748b; margin-top: 8px;">',
     '            Median: ${(stats.median_response_time || 0).toFixed(1)}s &bull; Average: ${(stats.avg_response_time || 0).toFixed(1)}s',
     '          </div>',
@@ -460,7 +519,6 @@ function generate(stats, synthesis, outputPath) {
     '        ` : ""}',
     '      `;',
     '',
-    '      // Interactive Hour Histogram',
     '      const updateHours = (offset) => {',
     '        const adjusted = new Array(24).fill(0);',
     '        (stats.hourlyActivity || []).forEach((count, h) => {',
