@@ -401,7 +401,7 @@ function generate(stats, synthesis, outputPath) {
     '        </div>',
     '',
     '        <div class="chart-card" style="margin: 24px 0;">',
-    '          <div class="chart-title">Multi-Clauding (Parallel Sessions)</div>',
+    '          <div class="chart-title">Parallel Sessions (Multi-Session Activity)</div>',
     '          <div style="display: flex; gap: 24px; margin: 12px 0;">',
     '            <div style="text-align: center;">',
     '              <div style="font-size: 24px; font-weight: 700; color: #7c3aed;">${stats.multi_clauding?.overlap_events || 0}</div>',

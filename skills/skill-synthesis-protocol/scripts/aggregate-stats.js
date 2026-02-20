@@ -173,7 +173,7 @@ for (const file of sessionFileGenerator(sessionDir)) {
   }
 }
 
-// O(N log N) Multi-clauding detection
+// O(N log N) Multi-session activity detection
 function detectMultiClauding(timestamps) {
   if (timestamps.length === 0) return { overlap_events: 0, sessions_involved: 0, user_messages_during: 0 };
   
