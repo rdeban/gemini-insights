@@ -102,6 +102,7 @@ for (const file of sessionFileGenerator(sessionDir)) {
           if (responseTime > 0 && responseTime < 3600) {
             stats.userResponseTimes.push(responseTime);
           }
+          lastGeminiTime = null;
         }
       } else if (msg.type === 'gemini') {
         stats.geminiMessages++;
