@@ -69,3 +69,27 @@ The extension uses a multi-pass orchestration engine (`skills/skill-synthesis-pr
 
 **Privacy Note**: To provide qualitative analysis, this extension samples message content from your sessions (typically the first and last few turns of each significant session). This data is processed locally by your Gemini CLI and is not shared with any third-party services beyond the Gemini API calls you authorize.
 
+## Troubleshooting & Cleanup
+
+If the orchestration process gets stuck, or if you want to force a completely fresh analysis (including re-running the qualitative synthesis), you can clean up the extension's temporary and cache files.
+
+### 1. Reset Current Project Analysis
+To force the extension to re-calculate stats and re-synthesize the qualitative report for the current project, delete the temporary processing directory:
+
+```bash
+# Deletes temp data for ALL projects
+rm -rf ~/.gemini/tmp/insights-extension/
+
+# OR, if you want to be surgical, find your project hash in that directory and delete only it.
+```
+
+### 2. Clear Qualitative Cache
+The extension caches qualitative "facets" (the analysis of individual sessions) to save time and API tokens. If you want to force the agent to re-analyze past sessions (e.g., after an update to the `agent-session-analyst`):
+
+```bash
+rm -rf ~/.gemini/cache/insights-extension/
+```
+
+### 3. Stuck Orchestration
+If the `/insights` command tells you to "process the missing session facets" but you are unable to do so, deleting the `~/.gemini/tmp/insights-extension/` directory will reset the orchestration state.
+
