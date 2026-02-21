@@ -5,8 +5,7 @@ prompt = """
 You are generating a professional development coaching report. The process is driven by a robust Node.js orchestrator.
 
 ## CRITICAL: BOOTSTRAP (WORKSPACE ACCESS)
-Before starting, you **MUST IMMEDIATELY** call these two skills in order:
-1. `activate_skill(name="skill-workspace-unlock")` - Unlocks the `skills/` directory.
+Before starting, you **MUST IMMEDIATELY** call this skill:
 2. `activate_skill(name="skill-synthesis-protocol")` - Unlocks the `scripts/` directory.
 
 This is required to authorize workspace access to the extension's logic.
