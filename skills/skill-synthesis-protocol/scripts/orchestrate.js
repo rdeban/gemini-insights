@@ -4,6 +4,7 @@ const { spawnSync } = require('child_process');
 const { logger, getTempDir, resolveCacheDir } = require('./utils');
 
 const EXT_PATH = process.argv[2] || process.cwd();
+const IS_DEEP = process.argv.includes('--deep');
 const SCRIPTS_DIR = path.join(EXT_PATH, 'skills', 'skill-synthesis-protocol', 'scripts');
 const TEMP_DIR = getTempDir();
 const CACHE_BASE = resolveCacheDir();
@@ -42,16 +43,19 @@ function run() {
   const stats = JSON.parse(statsJson);
 
   // PASS 2: Missing Facets
+  // If not deep, we only analyze the top 5 sessions for speed.
+  const sampleSize = IS_DEEP ? 15 : 5;
   const topSessions = stats.sessionList
     .filter(s => s.userMessages > 1)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 15);
+    .slice(0, sampleSize);
 
   const missing = topSessions.filter(s => !fs.existsSync(path.join(FACETS_DIR, `${s.id}.json`)));
 
   if (missing.length > 0) {
     const todo = {
       task: "EXTRACT_FACETS",
+      isDeep: IS_DEEP,
       sessions: missing.map(s => {
         const transcript = runCommand('prepare-sampling.js', [], { 
           SELECTED_SESSION_IDS: s.id,
@@ -59,7 +63,22 @@ function run() {
         });
         return { id: s.id, transcript };
       }),
-      instructions: `Batch these! For each session, delegate to 'agent-session-analyst'. Save each result using 'node ${path.join(SCRIPTS_DIR, 'save-facet.js')} <id> <json>'.`
+      instructions: IS_DEEP 
+        ? `Deep Mode: For each session, delegate to 'agent-session-analyst'. Save each results using 'node ${path.join(SCRIPTS_DIR, 'save-facet.js')} <id> <json>'.`
+        : `Standard Mode: Analyze these transcripts yourself (best-effort). For each, extract key facets (intent, friction, outcome, success) and save each result using 'node ${path.join(SCRIPTS_DIR, 'save-facet.js')} <id> <json>'. 
+        
+Your output for EACH session MUST be a valid JSON matching this schema:
+{
+  "session_id": "the UUID",
+  "underlying_goal": "What you wanted to achieve",
+  "outcome": "fully_achieved|mostly_achieved|partially_achieved|not_achieved|unclear_from_transcript",
+  "claude_helpfulness": "unhelpful|slightly_helpful|moderately_helpful|very_helpful|essential",
+  "session_type": "single_task|multi_task|iterative_refinement|exploration|quick_question",
+  "friction_counts": { "misunderstood_request": 0, "wrong_approach": 0, "buggy_code": 0, "user_rejected_action": 0, "excessive_changes": 0, "hallucination": 0, "redundant_questions": 0, "tool_error": 0, "timeout": 0 },
+  "primary_success": "none|fast_accurate_search|correct_code_edits|good_explanations|proactive_help|multi_file_changes|good_debugging",
+  "brief_summary": "One sentence: goal and outcome",
+  "project_area": { "name": "Area name", "description": "2-3 sentences about scope/tools" }
+}`
     };
     fs.writeFileSync(todoPath, JSON.stringify(todo, null, 2));
     console.log(`TODO: Please read '${todoPath}' and process the missing session facets.`);
@@ -87,12 +106,20 @@ function run() {
     successTypes: {}
   };
   
-  if (facets.length > 0) {
-    fs.writeFileSync(allFacetsPath, JSON.stringify(facets, null, 2));
+  // Always write all-facets.json, even if empty, so synthesis has a valid input
+  fs.writeFileSync(allFacetsPath, JSON.stringify(facets, null, 2));
 
+  if (facets.length > 0) {
     facets.forEach(f => {
       if (f.outcome) stats.qualitative.outcomes[f.outcome] = (stats.qualitative.outcomes[f.outcome] || 0) + 1;
-      if (f.claude_helpfulness) stats.qualitative.satisfaction[f.claude_helpfulness] = (stats.qualitative.satisfaction[f.claude_helpfulness] || 0) + 1;
+      if (f.user_satisfaction_counts) {
+        Object.entries(f.user_satisfaction_counts).forEach(([level, count]) => {
+          stats.qualitative.satisfaction[level] = (stats.qualitative.satisfaction[level] || 0) + count;
+        });
+      }
+      if (f.claude_helpfulness && !stats.qualitative.satisfaction[f.claude_helpfulness]) {
+         stats.qualitative.satisfaction[f.claude_helpfulness] = (stats.qualitative.satisfaction[f.claude_helpfulness] || 0) + 1;
+      }
       if (f.session_type) stats.qualitative.sessionTypes[f.session_type] = (stats.qualitative.sessionTypes[f.session_type] || 0) + 1;
       if (f.primary_success) stats.qualitative.successTypes[f.primary_success] = (stats.qualitative.successTypes[f.primary_success] || 0) + 1;
       if (f.friction_counts) {
@@ -109,7 +136,7 @@ function run() {
       statsFile: statsPath,
       facetsFile: allFacetsPath,
       synthesisPath: synthesisPath,
-      instructions: `Activate 'skill-synthesis-protocol'. Read '${statsPath}' and '${allFacetsPath}'. Save the resulting synthesis object directly to '${synthesisPath}'.`
+      instructions: `Activate 'skill-synthesis-protocol'. Read '${statsPath}' and '${allFacetsPath}'. Synthesize the quantitative data and the qualitative facets into a cohesive report. Save the resulting JSON object directly to '${synthesisPath}'.`
     };
     fs.writeFileSync(todoPath, JSON.stringify(todo, null, 2));
     fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));

@@ -36,24 +36,27 @@ If you'd like to contribute or run a local version:
 
 ## Usage
 
-> **Note**: This extension uses sub-agents to perform deep qualitative analysis. Sub-agent functionality is currently an **experimental feature** in Gemini CLI and must be enabled in your `settings.json`. Refer to the [Sub-agents Documentation](https://geminicli.com/docs/core/subagents/) for details on enabling the `experimental.enableAgents` flag.
-
-> **Warning**: This extension may send a significant number of messages to Gemini to perform its analysis, which will consume your API quota. By using this extension, you acknowledge that you are solely responsible for any costs or quota usage incurred. The author is not responsible for any monetary loss or any actions/outcomes resulting from the execution of the agents.
-
 Simply type the following command in any Gemini CLI session:
 
 ```bash
 /insights
 ```
 
-The command will walk you through a series of analysis passes. At the end, it will provide a link to the generated report: `file://${PWD}/gemini-insights.html`.
+### Modes
+
+- **Standard (Default)**: Fast, "best-effort" qualitative analysis of your most significant recent sessions. The analysis is performed directly by the main Gemini agent.
+- **Deep (`--deep`)**: Exhaustive analysis of up to 15 sessions using a specialized `agent-session-analyst` sub-agent. This provides more granular coaching and identifies more subtle friction patterns.
+
+> **Note**: The `--deep` mode uses experimental sub-agents. This functionality must be enabled in your `settings.json`. Refer to the [Sub-agents Documentation](https://geminicli.com/docs/core/subagents/) for details on enabling the `experimental.enableAgents` flag. Standard mode does NOT require this flag.
+
+> **Warning**: This extension, especially in `--deep` mode, may send a significant number of messages to Gemini to perform its analysis, which will consume your API quota. By using this extension, you acknowledge that you are solely responsible for any costs or quota usage incurred. The author is not responsible for any monetary loss or any actions/outcomes resulting from the execution of the agents.
 
 ## How it Works
 
 The extension uses a multi-pass orchestration engine (`skills/skill-synthesis-protocol/scripts/orchestrate.js`) that performs the following steps:
 
 1.  **Aggregation**: Scans your local session logs (in `~/.gemini/tmp/`) to extract global quantitative metrics (tokens, tools, activity).
-2.  **Qualitative Extraction**: Identifies the most significant sessions and uses the `agent-session-analyst` to extract "facets" (goals, outcomes, friction).
+2.  **Qualitative Extraction**: Identifies the most significant sessions and extracts "facets" (goals, outcomes, friction). In standard mode, this is a best-effort pass by the main agent; in `--deep` mode, it uses the specialized `agent-session-analyst` sub-agent.
 3.  **Global Synthesis**: Leverages the `skill-synthesis-protocol` to analyze all metrics and facets, producing a cohesive development coaching narrative.
 4.  **Report Generation**: Compiles everything into a single HTML file with embedded, compressed data for easy sharing.
 
@@ -64,4 +67,5 @@ The extension uses a multi-pass orchestration engine (`skills/skill-synthesis-pr
 - `INSIGHTS_TEMP_DIR`: Location of the project-specific temporary processing directory (defaults to `GEMINI_CLI_HOME/.gemini/tmp/insights-extension/<project-hash>`).
 - `GEMINI_SESSION_DIR`: Location of the Gemini CLI session logs (defaults to `GEMINI_CLI_HOME/.gemini/tmp`).
 
-**Privacy Note**: To provide deep qualitative analysis, this extension samples message content from your sessions (typically the first and last few turns of each significant session). This data is processed locally by your Gemini CLI and is not shared with any third-party services beyond the Gemini API calls you authorize.
+**Privacy Note**: To provide qualitative analysis, this extension samples message content from your sessions (typically the first and last few turns of each significant session). This data is processed locally by your Gemini CLI and is not shared with any third-party services beyond the Gemini API calls you authorize.
+
