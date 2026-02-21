@@ -1,6 +1,9 @@
 # Insights Extension for Gemini CLI
 
-This extension provides a powerful `/insights` command, inspired by the Claude Code feature of the same name. It analyzes your Gemini CLI usage patterns over the past 30 days and generates a high-fidelity, interactive HTML report with qualitative assessments, development coaching, and architectural suggestions.
+> **Initial Release**: This is an early, experimental version of the Insights extension. It is currently "rough around the edges," may not be perfect, and could underperform in certain scenarios. Feedback and contributions are welcome!
+
+This extension provides a powerful `/insights` command, inspired by the Claude Code feature of the same name.
+ It analyzes your Gemini CLI usage patterns over the past 30 days and generates a high-fidelity, interactive HTML report with qualitative assessments, development coaching, and architectural suggestions.
 
 ## Features
 
@@ -13,13 +16,29 @@ This extension provides a powerful `/insights` command, inspired by the Claude C
 
 ## Installation
 
-1. Clone this repository or download the source.
-2. Link the extension locally from the project root:
+### From GitHub (Recommended)
+
+To install the extension directly from GitHub without manually cloning:
+
+```bash
+gemini extensions install https://github.com/rdeban/gemini-insights
+```
+
+### Local Development
+
+If you'd like to contribute or run a local version:
+
+1. Clone this repository.
+2. Link the extension from the project root:
    ```bash
    gemini extensions link .
    ```
 
 ## Usage
+
+> **Note**: This extension uses sub-agents to perform deep qualitative analysis. Sub-agent functionality is currently an **experimental feature** in Gemini CLI and must be enabled in your `settings.json`. Refer to the [Sub-agents Documentation](https://geminicli.com/docs/core/subagents/) for details on enabling the `experimental.enableAgents` flag.
+
+> **Warning**: This extension may send a significant number of messages to Gemini to perform its analysis, which will consume your API quota. By using this extension, you acknowledge that you are solely responsible for any costs or quota usage incurred. The author is not responsible for any monetary loss or any actions/outcomes resulting from the execution of the agents.
 
 Simply type the following command in any Gemini CLI session:
 
