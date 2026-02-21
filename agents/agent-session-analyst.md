@@ -39,7 +39,9 @@ Return ONLY a valid JSON object matching this schema:
 
 ## Critical Guidelines
 
-1. **goal_categories**: Count ONLY what the USER explicitly asked for.
+1. **Tone**: Use neutral, objective, and factual language. Avoid pompous or self-congratulatory "GPTisms" (e.g., "you didn't just report the bug...", "masterfully handled"). Be a clinical observer.
+
+2. **goal_categories**: Count ONLY what the USER explicitly asked for.
    - DO NOT count Gemini's autonomous codebase exploration.
    - DO NOT count work Gemini decided to do on its own.
    - ONLY count when user says "can you...", "please...", "I need...", "let's..."
